@@ -3,11 +3,8 @@ const allHighlightsContainer =
 
 async function loadAllHighlights(){ //Load all saved highlights
 
-    const result =
-        await browser.storage.local.get("highlights");
-
     const highlights =
-        result.highlights || [];
+        await getAllHighlights(); //From storage.js
 
     allHighlightsContainer.innerHTML = "";
 
@@ -138,32 +135,11 @@ async function deleteHighlight( //Delete a highlight from storage
     highlightToDelete
 ){
 
-    const result =
-        await browser.storage.local.get(
-            "highlights"
-        );
-
-    let highlights =
-        result.highlights || [];
-
-
-    highlights = highlights.filter(
-        highlight =>
-            !(
-                highlight.url ===
-                    highlightToDelete.url &&
-                highlight.text ===
-                    highlightToDelete.text
-            )
+    // Open tabs showing this page remove the mark themselves (content.js),
+    // and the storage listener below reloads the library
+    await deleteHighlightById(
+        highlightToDelete.id
     );
-
-
-    await browser.storage.local.set({
-        highlights: highlights
-    });
-
-
-    loadAllHighlights(); //Reload library
 }
 
 loadAllHighlights(); //Load everything when the page opens

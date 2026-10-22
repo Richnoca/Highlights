@@ -7,13 +7,15 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
+<body class="popup">
 
   <h2>Highlights</h2>
 
   <button id="highlightBtn">
     Highlight Selected Text
   </button>
+
+  <p id="statusMessage" class="status-message" hidden></p>
 
   <button id="viewAllBtn">
     View All Highlights
@@ -23,6 +25,7 @@
 
   <div id="highlightList"></div>
 
+  <script src="storage.js"></script>
   <script src="popup.js"></script>
 
 </body>
