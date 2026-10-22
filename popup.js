@@ -1,19 +1,51 @@
+// Storage helpers (getHighlightsForUrl, deleteHighlightById) come from storage.js.
+
 const highlightBtn = document.getElementById("highlightBtn");
 const highlightList = document.getElementById("highlightList");
 const viewAllBtn = document.getElementById("viewAllBtn");
+const statusMessage = document.getElementById("statusMessage");
 
-highlightBtn.addEventListener("click", async () => { //Highlight selected text
+async function getCurrentTab(){
 
     const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true
     });
 
-    const tab = tabs[0];
+    return tabs[0];
+}
 
-    await browser.tabs.sendMessage(tab.id, {
-        action: "highlight"
-    });
+function showStatus(text){
+
+    statusMessage.textContent = text;
+    statusMessage.hidden = !text;
+}
+
+highlightBtn.addEventListener("click", async () => { //Highlight selected text
+
+    showStatus("");
+
+    const tab = await getCurrentTab();
+
+    let result;
+
+    try{
+
+        result = await browser.tabs.sendMessage(tab.id, {
+            action: "highlight"
+        });
+
+    }catch{
+
+        // No content script here: a browser page like about:addons,
+        // addons.mozilla.org, or a tab opened before the extension loaded
+        showStatus("Highlights can't run on this page. If it was open before the extension loaded, reload the page and try again.");
+        return;
+    }
+
+    if (result && !result.ok){
+        showStatus(result.reason);
+    }
 
     loadHighlights(); //Refresh saved highlight list
 });
@@ -28,21 +60,9 @@ viewAllBtn.addEventListener("click", () => {
 
 async function loadHighlights(){ //Load highlights for current page
 
-    const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true
-    });
+    const tab = await getCurrentTab();
 
-    const tab = tabs[0];
-    const currentUrl = tab.url;
-
-    const result = await browser.storage.local.get("highlights");
-
-    const highlights = result.highlights || [];
-
-    const pageHighlights = highlights.filter(     //Only show highlights from current page
-        highlight => highlight.url === currentUrl
-    );
+    const pageHighlights = await getHighlightsForUrl(tab.url);
 
     highlightList.innerHTML = "";
 
@@ -63,7 +83,11 @@ async function loadHighlights(){ //Load highlights for current page
         deleteButton.textContent = "Delete";
 
         deleteButton.addEventListener("click", async () =>{
-            await deleteHighlight(highlight);
+
+            // content.js notices the storage change and removes the mark itself
+            await deleteHighlightById(highlight.id);
+
+            loadHighlights(); //Refresh the popup list
         });
 
         container.appendChild(text);
@@ -71,38 +95,6 @@ async function loadHighlights(){ //Load highlights for current page
 
         highlightList.appendChild(container);
     });
-}
-
-async function deleteHighlight(highlightToDelete){ //Delete highlight
-
-    const result = await browser.storage.local.get("highlights");
-    let highlights = result.highlights || [];
-
-    highlights = highlights.filter(
-        highlight =>
-            !(
-                highlight.url === highlightToDelete.url &&
-                highlight.text === highlightToDelete.text
-            )
-    );
-
-    await browser.storage.local.set({     //Remove from FF storage
-        highlights: highlights
-    });
-
-    const tabs = await browser.tabs.query({  //Get the current tab
-        active: true,
-        currentWindow: true
-    });
-
-    const tab = tabs[0];
-
-    await browser.tabs.sendMessage(tab.id,{    //Tell content.js to remove visible highlight
-        action: "removeHighlight",
-        text: highlightToDelete.text
-    });
-
-    loadHighlights();    //Refresh the popup list
 }
 
 loadHighlights(); //Load saved highlights when popup opens

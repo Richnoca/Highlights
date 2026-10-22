@@ -1,10 +1,14 @@
 body {
   font-family: Arial, sans-serif;
+}
+
+/* Popup only: the library page has its own width below */
+body.popup {
   width: 220px;
   padding: 15px;
 }
 
-h2 {
+.popup h2 {
   text-align: center;
 }
 
@@ -72,4 +76,10 @@ h3 {
 .library-highlight button {
     width: auto;
     padding: 6px 12px;
+}
+
+.status-message {
+    font-size: 12px;
+    color: #a33;
+    margin: 8px 0 0;
 }
