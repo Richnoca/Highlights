@@ -1,0 +1,23 @@
+/* Injected into every webpage (see manifest.json) to color the <mark> tags.
+   !important because many sites style <mark> themselves. */
+
+mark.Highlights-highlight {
+    background-color: #fff176 !important;  /* yellow, also used if data-color is missing */
+    color: #111 !important;                /* stays readable on dark-themed sites */
+    padding: 0 !important;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+mark.Highlights-highlight[data-color="green"] {
+    background-color: #a8e6a1 !important;
+}
+
+mark.Highlights-highlight[data-color="blue"] {
+    background-color: #a6d4ff !important;
+}
+
+mark.Highlights-highlight[data-color="pink"] {
+    background-color: #ffb8dc !important;
+}
