@@ -15,7 +15,7 @@ const SKIPPED_TAGS = new Set([
 browser.runtime.onMessage.addListener((message) =>{
 
     if (message.action === "highlight"){
-        return createHighlightFromSelection(); // popup receives the result
+        return createHighlightFromSelection(message.color); // popup receives the result
     }
 });
 
@@ -62,7 +62,12 @@ function buildTextIndex(){
 
 // ----------------------CREATE A HIGHLIGHT----------------------
 
-async function createHighlightFromSelection(){
+async function createHighlightFromSelection(color){
+
+    if (!HIGHLIGHT_COLORS.includes(color)){
+        color = DEFAULT_COLOR;
+    }
+
 
     const selection = window.getSelection();
 
@@ -117,13 +122,17 @@ async function createHighlightFromSelection(){
     const highlight = {
         id: createHighlightId(),
         url: normalizeUrl(window.location.href),
+        title: getPageTitle(),
         text: index.text.slice(start, end),
         prefix: index.text.slice(Math.max(0, start - CONTEXT_LENGTH), start),
         suffix: index.text.slice(end, end + CONTEXT_LENGTH),
+        color: color,
+        note: "",
+        tags: [],
         createdAt: Date.now()
     };
 
-    wrapTextRange(index, start, end, highlight.id);
+    wrapTextRange(index, start, end, highlight.id, highlight.color);
 
     selection.removeAllRanges(); //Remove the blue
 
@@ -144,7 +153,7 @@ async function createHighlightFromSelection(){
 
 // Wraps page text between start and end (positions in index.text)
 // in <mark> tags, one per text node the range touches.
-function wrapTextRange(index, start, end, id){
+function wrapTextRange(index, start, end, id, color){
 
     const matchingNodes = index.nodes.filter(item =>
         item.end > start &&
@@ -177,6 +186,7 @@ function wrapTextRange(index, start, end, id){
         const mark = document.createElement("mark");
         mark.className = MARK_CLASS;
         mark.dataset.highlightId = id;
+        mark.dataset.color = color || DEFAULT_COLOR;
 
         try{
             range.surroundContents(mark);
@@ -184,6 +194,20 @@ function wrapTextRange(index, start, end, id){
             console.log("Highlights: Could not draw part of highlight:", error);
         }
     });
+}
+
+// Recolor an existing highlight's marks if its color changed
+function setMarkColor(id, color){
+
+    getMarks(id).forEach((mark) =>{
+        if (mark.dataset.color !== color){
+            mark.dataset.color = color;
+        }
+    });
+}
+
+function getPageTitle(){
+    return (document.title || "").trim();
 }
 
 function getMarks(id){
@@ -336,7 +360,7 @@ function drawHighlight(highlight){
         return false;
     }
 
-    wrapTextRange(index, match.start, match.end, highlight.id);
+    wrapTextRange(index, match.start, match.end, highlight.id, highlight.color);
 
     return isDrawn(highlight.id);
 }
@@ -363,6 +387,9 @@ let retryTimer = null;
 async function restoreHighlights(){
 
     const highlights = await getHighlightsForUrl(window.location.href);
+
+    // Highlights saved before titles were stored get this page's title now
+    fillMissingTitles(window.location.href, getPageTitle());
 
     pendingHighlights = highlights.filter(highlight => !drawHighlight(highlight));
 
@@ -462,8 +489,10 @@ browser.storage.onChanged.addListener((changes, areaName) =>{
 
     pendingHighlights = pendingHighlights.filter(highlight => savedIds.has(highlight.id));
 
-    // Draw highlights added elsewhere
+    // Draw highlights added elsewhere, and recolor changed ones
     pageHighlights.forEach((highlight) =>{
+
+        setMarkColor(highlight.id, highlight.color);
 
         if (!drawHighlight(highlight) &&
             !pendingHighlights.some(pending => pending.id === highlight.id)){
