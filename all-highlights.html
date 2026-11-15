@@ -1,19 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Highlights Library</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body class="library-page">
 
-    <h1>Highlights Library</h1>
+    <header class="library-header">
+        <h1>Highlights Library</h1>
+        <p id="librarySummary" class="library-summary"></p>
+    </header>
 
-    <p>All saved highlights</p>
+    <div class="library-layout">
 
-    <div id="allHighlights"></div>
+        <nav id="librarySidebar" class="library-sidebar" aria-label="Pages and tags"></nav>
+
+        <main id="libraryMain" class="library-main"></main>
+
+    </div>
 
     <script src="storage.js"></script>
     <script src="ui.js"></script>

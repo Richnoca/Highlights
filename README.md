@@ -10,7 +10,10 @@ Highlights is a Firefox extension that allows users to highlight important text 
 - Keep highlights separated by webpage
 - Delete saved highlights
 - Choose from four highlight colors (yellow, green, blue, pink) and recolor saved highlights
-- View all saved highlights in a separate Highlights Library, grouped by page title
+- Add notes to highlights; notes appear when hovering over the highlighted text
+- Tag highlights (for example "exam" or "research") and view every highlight with a tag
+- Browse all highlights in the Highlights Library, with a sidebar of pages and tags
+- Jump from the popup to the current page's highlights in the library
 - Open the original webpage from the library
 - Support more complex webpages such as Wikipedia
 
@@ -22,7 +25,7 @@ Highlights is a Firefox extension that allows users to highlight important text 
 - `storage.js` - Shared helpers for reading, saving, and deleting highlights
 - `content.js` - Handles highlighting and restoring webpage text
 - `highlight.css` - Colors highlights on webpages
-- `ui.js` - Shared color buttons for the popup and library
+- `ui.js` - Shared color buttons, note box and tag editor for the popup and library
 - `styles.css` - Controls the appearance of the extension
 - `all-highlights.html` - Displays the Highlights Library
 - `all-highlights.js` - Controls the saved highlight library
@@ -38,4 +41,4 @@ Highlights is a Firefox extension that allows users to highlight important text 
 
 ## Future Improvements
 
-Future features may include notes, tags, search, improved organization, and exporting saved highlights.
+Future features may include search and exporting saved highlights.

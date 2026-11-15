@@ -10,8 +10,9 @@
 //   suffix:    up to 32 characters of page text just after the highlight
 //   color:     one of HIGHLIGHT_COLORS
 //   note:      the user's note ("" if none)
-//   tags:      array of tag strings
+//   tags:      array of tag strings, e.g. ["exam", "research"]
 //   createdAt: timestamp in milliseconds
+//   updatedAt: timestamp of the last edit (missing if never edited)
 // }
 //
 // prefix and suffix tell apart repeated phrases, so the right
@@ -118,6 +119,20 @@ function migrateHighlights(highlights){
 
 // --------------------READ / WRITE--------------------
 
+// Every change reads the whole list, edits it and writes it back.
+// Two changes running at the same time (say, a note saving while a
+// color is clicked) could each write over the other's edit, so changes
+// made from this page wait their turn.
+let writeQueue = Promise.resolve();
+
+function queueWrite(change){
+
+    const result = writeQueue.then(change);
+    writeQueue = result.catch(() => {});
+
+    return result;
+}
+
 async function getAllHighlights(){
 
     const result = await browser.storage.local.get(HIGHLIGHTS_KEY);
@@ -140,53 +155,67 @@ async function getHighlightsForUrl(url){
     return highlights.filter(highlight => highlight.url === pageUrl);
 }
 
-async function addHighlight(highlight){
+function addHighlight(highlight){
 
-    const highlights = await getAllHighlights();
+    return queueWrite(async () =>{
 
-    highlights.push(highlight);
+        const highlights = await getAllHighlights();
 
-    await browser.storage.local.set({ [HIGHLIGHTS_KEY]: highlights });
+        highlights.push(highlight);
+
+        await browser.storage.local.set({ [HIGHLIGHTS_KEY]: highlights });
+    });
 }
 
-async function deleteHighlightById(id){
+function deleteHighlightById(id){
 
-    const highlights = await getAllHighlights();
+    return queueWrite(async () =>{
 
-    await browser.storage.local.set({
-        [HIGHLIGHTS_KEY]: highlights.filter(highlight => highlight.id !== id)
+        const highlights = await getAllHighlights();
+
+        await browser.storage.local.set({
+            [HIGHLIGHTS_KEY]: highlights.filter(highlight => highlight.id !== id)
+        });
     });
 }
 
 // Change some fields of one highlight, for example {color: "green"}
-async function updateHighlight(id, changes){
+function updateHighlight(id, changes){
 
-    const highlights = await getAllHighlights();
+    return queueWrite(async () =>{
 
-    await browser.storage.local.set({
-        [HIGHLIGHTS_KEY]: highlights.map(highlight =>
-            highlight.id === id ? { ...highlight, ...changes, id: id } : highlight
-        )
+        const highlights = await getAllHighlights();
+
+        await browser.storage.local.set({
+            [HIGHLIGHTS_KEY]: highlights.map(highlight =>
+                highlight.id === id
+                    ? { ...highlight, ...changes, id: id, updatedAt: Date.now() }
+                    : highlight
+            )
+        });
     });
 }
 
 // Highlights saved before titles existed have title "".
 // Fill them in the next time their page is opened.
-async function fillMissingTitles(url, title){
+function fillMissingTitles(url, title){
 
-    const pageUrl = normalizeUrl(url);
-    const highlights = await getAllHighlights();
+    return queueWrite(async () =>{
 
-    if (!title || !highlights.some(h => h.url === pageUrl && !h.title)){
-        return;
-    }
+        const pageUrl = normalizeUrl(url);
+        const highlights = await getAllHighlights();
 
-    await browser.storage.local.set({
-        [HIGHLIGHTS_KEY]: highlights.map(highlight =>
-            highlight.url === pageUrl && !highlight.title
-                ? { ...highlight, title: title }
-                : highlight
-        )
+        if (!title || !highlights.some(h => h.url === pageUrl && !h.title)){
+            return;
+        }
+
+        await browser.storage.local.set({
+            [HIGHLIGHTS_KEY]: highlights.map(highlight =>
+                highlight.url === pageUrl && !highlight.title
+                    ? { ...highlight, title: title }
+                    : highlight
+            )
+        });
     });
 }
 
@@ -208,6 +237,63 @@ async function setSelectedColor(color){
     await browser.storage.local.set({
         [SETTINGS_KEY]: { ...(result[SETTINGS_KEY] || {}), color: color }
     });
+}
+
+// --------------------TAGS--------------------
+
+const MAX_TAG_LENGTH = 40;
+
+// "Exam, #research,  exam" -> ["Exam", "research"]
+// Tags are compared without caring about capitals, and
+// the first spelling typed is the one kept.
+function parseTags(text){
+
+    return mergeTags([], String(text).split(","));
+}
+
+// Adds new tags to a list, skipping blanks and duplicates
+function mergeTags(existing, additions){
+
+    const tags = [...existing];
+
+    additions.forEach((raw) =>{
+
+        const tag = String(raw)
+            .replace(/\s+/g, " ")
+            .trim()
+            .replace(/^#+\s*/, "")
+            .slice(0, MAX_TAG_LENGTH)
+            .trim();
+
+        if (tag && !tags.some(t => t.toLowerCase() === tag.toLowerCase())){
+            tags.push(tag);
+        }
+    });
+
+    return tags;
+}
+
+// Every tag in use, with how many highlights have it, most used first
+function countTags(highlights){
+
+    const counts = {};
+    const spelling = {};
+
+    highlights.forEach((highlight) =>{
+        highlight.tags.forEach((tag) =>{
+            const key = tag.toLowerCase();
+            counts[key] = (counts[key] || 0) + 1;
+            spelling[key] = spelling[key] || tag;
+        });
+    });
+
+    return Object.keys(counts)
+        .map(key => ({ tag: spelling[key], count: counts[key] }))
+        .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+function hasTag(highlight, tag){
+    return highlight.tags.some(t => t.toLowerCase() === tag.toLowerCase());
 }
 
 // --------------------DISPLAY HELPERS--------------------

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Highlights",
-  "version": "1.2",
+  "version": "1.3",
   "description": "Highlight and save important text on webpages.",
 
   "browser_specific_settings": {

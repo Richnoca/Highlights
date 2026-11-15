@@ -47,3 +47,203 @@ function createColorPicker(selectedColor, onPick, size){
 function getDisplayTitle(title, url){
     return title || getDomain(url);
 }
+
+// ----------------------NOTES----------------------
+
+// A text box for a highlight's note. Saves by itself while typing
+// (after a short pause), when the box loses focus, and when the page
+// closes (the popup closes as soon as you click outside it).
+function createNoteEditor(highlight){
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "note-editor";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "note-input";
+    textarea.placeholder = "Add a note…";
+    textarea.rows = 1;
+    textarea.value = highlight.note;
+    textarea.setAttribute("aria-label", "Note");
+
+    const status = document.createElement("span");
+    status.className = "note-status";
+    status.setAttribute("aria-live", "polite");
+
+    let savedNote = highlight.note;
+    let saveTimer = null;
+
+    async function save(){
+
+        clearTimeout(saveTimer);
+
+        const note = textarea.value.trim();
+
+        if (note === savedNote){
+            return;
+        }
+
+        savedNote = note;
+        await updateHighlight(highlight.id, { note: note });
+
+        status.textContent = "Saved";
+        setTimeout(() => { status.textContent = ""; }, 1500);
+    }
+
+    textarea.addEventListener("input", () =>{
+        growToFit(textarea);
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(save, 300);
+    });
+
+    textarea.addEventListener("blur", save);
+    window.addEventListener("pagehide", save);
+
+    wrapper.appendChild(textarea);
+    wrapper.appendChild(status);
+
+    // Size it once it is on the page
+    requestAnimationFrame(() => growToFit(textarea));
+
+    return wrapper;
+}
+
+function growToFit(textarea){
+    textarea.style.height = "auto";
+    textarea.style.height = textarea.scrollHeight + "px";
+}
+
+// ----------------------TAGS----------------------
+
+// Tag chips plus a box for adding more. Type a tag and press Enter
+// or a comma. Backspace in the empty box removes the last tag.
+// onTagClick(tag) is optional; the library uses it to filter by tag.
+function createTagEditor(highlight, onTagClick){
+
+    let tags = [...highlight.tags];
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "tag-editor";
+
+    const chips = document.createElement("div");
+    chips.className = "tag-chips";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "tag-input";
+    input.placeholder = "Add tag";
+    input.setAttribute("aria-label", "Add tag");
+    input.setAttribute("list", "tag-suggestions");
+    input.maxLength = MAX_TAG_LENGTH;
+
+    async function setTags(newTags){
+        tags = newTags;
+        drawChips();
+        await updateHighlight(highlight.id, { tags: tags });
+    }
+
+    function drawChips(){
+
+        chips.innerHTML = "";
+
+        tags.forEach((tag) =>{
+
+            const chip = document.createElement("span");
+            chip.className = "tag-chip";
+
+            const label = document.createElement(onTagClick ? "button" : "span");
+            label.className = "tag-label";
+            label.textContent = tag;
+
+            if (onTagClick){
+                label.type = "button";
+                label.title = "Show all highlights tagged " + tag;
+                label.addEventListener("click", () => onTagClick(tag));
+            }
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "tag-remove";
+            remove.textContent = "×";
+            remove.setAttribute("aria-label", "Remove tag " + tag);
+            remove.addEventListener("click", () =>{
+                setTags(tags.filter(t => t !== tag));
+            });
+
+            chip.appendChild(label);
+            chip.appendChild(remove);
+            chips.appendChild(chip);
+        });
+    }
+
+    function addTyped(){
+
+        const typed = input.value;
+        input.value = "";
+
+        const merged = mergeTags(tags, typed.split(","));
+
+        if (merged.length !== tags.length){
+            setTags(merged);
+        }
+    }
+
+    input.addEventListener("keydown", (event) =>{
+
+        if (event.key === "Enter" || event.key === ","){
+            event.preventDefault();
+            addTyped();
+        }
+
+        if (event.key === "Backspace" && input.value === "" && tags.length > 0){
+            setTags(tags.slice(0, -1));
+        }
+    });
+
+    // Picking a suggestion from the list, or pasting "a, b, c"
+    input.addEventListener("change", addTyped);
+    input.addEventListener("blur", addTyped);
+
+    drawChips();
+
+    wrapper.appendChild(chips);
+    wrapper.appendChild(input);
+
+    return wrapper;
+}
+
+// Fills the <datalist> that tag boxes suggest from
+function setTagSuggestions(highlights){
+
+    let list = document.getElementById("tag-suggestions");
+
+    if (!list){
+        list = document.createElement("datalist");
+        list.id = "tag-suggestions";
+        document.body.appendChild(list);
+    }
+
+    list.innerHTML = "";
+
+    countTags(highlights).forEach(({ tag }) =>{
+        const option = document.createElement("option");
+        option.value = tag;
+        list.appendChild(option);
+    });
+}
+
+// ----------------------DATES----------------------
+
+// A timestamp -> "Nov 15, 2026". Highlights from before dates
+// were saved have 0, which shows as "".
+function formatDate(timestamp){
+
+    if (!timestamp){
+        return "";
+    }
+
+    return new Date(timestamp).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}

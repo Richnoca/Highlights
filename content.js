@@ -196,12 +196,24 @@ function wrapTextRange(index, start, end, id, color){
     });
 }
 
-// Recolor an existing highlight's marks if its color changed
-function setMarkColor(id, color){
+// Bring a highlight's marks up to date: its color, and its note
+// shown as a tooltip when hovering over the highlighted text
+function syncMarks(highlight){
 
-    getMarks(id).forEach((mark) =>{
-        if (mark.dataset.color !== color){
-            mark.dataset.color = color;
+    const tooltip = highlight.note
+        ? "Note: " + highlight.note
+        : "";
+
+    getMarks(highlight.id).forEach((mark) =>{
+
+        if (mark.dataset.color !== highlight.color){
+            mark.dataset.color = highlight.color;
+        }
+
+        if (tooltip){
+            mark.title = tooltip;
+        }else{
+            mark.removeAttribute("title");
         }
     });
 }
@@ -361,6 +373,7 @@ function drawHighlight(highlight){
     }
 
     wrapTextRange(index, match.start, match.end, highlight.id, highlight.color);
+    syncMarks(highlight);
 
     return isDrawn(highlight.id);
 }
@@ -489,10 +502,10 @@ browser.storage.onChanged.addListener((changes, areaName) =>{
 
     pendingHighlights = pendingHighlights.filter(highlight => savedIds.has(highlight.id));
 
-    // Draw highlights added elsewhere, and recolor changed ones
+    // Draw highlights added elsewhere, and update changed colors and notes
     pageHighlights.forEach((highlight) =>{
 
-        setMarkColor(highlight.id, highlight.color);
+        syncMarks(highlight);
 
         if (!drawHighlight(highlight) &&
             !pendingHighlights.some(pending => pending.id === highlight.id)){
