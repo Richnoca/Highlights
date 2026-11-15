@@ -1,4 +1,5 @@
-// Storage helpers come from storage.js, createColorPicker from ui.js.
+// Storage helpers come from storage.js; color picker, note and tag
+// editors from ui.js.
 
 const highlightBtn = document.getElementById("highlightBtn");
 const highlightList = document.getElementById("highlightList");
@@ -6,6 +7,7 @@ const viewAllBtn = document.getElementById("viewAllBtn");
 const statusMessage = document.getElementById("statusMessage");
 const colorChoice = document.getElementById("colorChoice");
 const pageTitle = document.getElementById("pageTitle");
+const pageLibraryLink = document.getElementById("pageLibraryLink");
 
 let selectedColor = DEFAULT_COLOR;
 
@@ -79,6 +81,19 @@ viewAllBtn.addEventListener("click", () => {
 
 });
 
+pageLibraryLink.addEventListener("click", async (event) => { //This page only
+
+    event.preventDefault();
+
+    const tab = await getCurrentTab();
+
+    browser.tabs.create({
+        url: browser.runtime.getURL(
+            "all-highlights.html?url=" + encodeURIComponent(normalizeUrl(tab.url))
+        )
+    });
+});
+
 // ----------------------SAVED HIGHLIGHTS FOR THIS PAGE----------------------
 
 async function loadHighlights(){ //Load highlights for current page
@@ -89,8 +104,11 @@ async function loadHighlights(){ //Load highlights for current page
 
     highlightList.innerHTML = "";
 
+    setTagSuggestions(await getAllHighlights());
+
     if (pageHighlights.length === 0){
         pageTitle.hidden = true;
+        pageLibraryLink.hidden = true;
         highlightList.textContent = "No saved highlights.";
         return;
     }
@@ -100,6 +118,7 @@ async function loadHighlights(){ //Load highlights for current page
         tab.url
     );
     pageTitle.hidden = false;
+    pageLibraryLink.hidden = false;
 
     pageHighlights.forEach((highlight) =>{
 
@@ -108,6 +127,7 @@ async function loadHighlights(){ //Load highlights for current page
         container.dataset.color = highlight.color;
 
         const text = document.createElement("p");
+        text.className = "saved-highlight-text";
         text.textContent = highlight.text;
 
         const actions = document.createElement("div");
@@ -120,6 +140,7 @@ async function loadHighlights(){ //Load highlights for current page
         }, "small");
 
         const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
         deleteButton.textContent = "Delete";
         deleteButton.className = "delete-button";
 
@@ -135,6 +156,8 @@ async function loadHighlights(){ //Load highlights for current page
         actions.appendChild(deleteButton);
 
         container.appendChild(text);
+        container.appendChild(createNoteEditor(highlight));
+        container.appendChild(createTagEditor(highlight));
         container.appendChild(actions);
 
         highlightList.appendChild(container);
