@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Highlights",
-  "version": "1.4",
-  "description": "Highlight and save important text on webpages.",
+  "version": "1.5",
+  "description": "Highlight and save important text on webpages, with colors, notes, tags, search and export.",
 
   "browser_specific_settings": {
     "gecko": {
@@ -14,13 +14,35 @@
     }
   },
 
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "menus"
   ],
 
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_title": "Highlights",
+    "default_icon": "icons/toolbar.svg"
+  },
+
+  "background": {
+    "scripts": ["storage.js", "background.js"]
+  },
+
+  "commands": {
+    "highlight-selection": {
+      "suggested_key": {
+        "default": "Alt+Shift+H"
+      },
+      "description": "Highlight the selected text"
+    }
   },
 
   "content_scripts": [

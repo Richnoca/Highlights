@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="100%" height="100%">
+  <style>
+    .ink { fill: #1f2328; }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #fbfbfe; }
+    }
+  </style>
+  <!-- the highlighted stroke -->
+  <rect x="2" y="23" width="28" height="7" rx="2" fill="#ffd43b"/>
+  <!-- the highlighter, tilted -->
+  <g transform="rotate(40 19 12)">
+    <rect class="ink" x="15" y="0" width="9" height="15" rx="2"/>
+    <path class="ink" d="M15 16.5h9l-1.5 4h-6z"/>
+    <path d="M16.5 21.5h6l-0.8 3.5h-4.4z" fill="#ffd43b" stroke="#1f2328" stroke-width="0" />
+  </g>
+</svg>

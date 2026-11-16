@@ -8,6 +8,7 @@ const statusMessage = document.getElementById("statusMessage");
 const colorChoice = document.getElementById("colorChoice");
 const pageTitle = document.getElementById("pageTitle");
 const pageLibraryLink = document.getElementById("pageLibraryLink");
+const shortcutHint = document.getElementById("shortcutHint");
 
 let selectedColor = DEFAULT_COLOR;
 
@@ -146,8 +147,9 @@ async function loadHighlights(){ //Load highlights for current page
 
         deleteButton.addEventListener("click", async () =>{
 
-            // content.js notices the storage change and removes the mark itself
-            await deleteHighlightById(highlight.id);
+            // content.js notices the storage change and removes the mark itself.
+            // A message at the bottom offers Undo for a few seconds.
+            await deleteWithUndo(highlight, loadHighlights);
 
             loadHighlights(); //Refresh the popup list
         });
@@ -164,5 +166,28 @@ async function loadHighlights(){ //Load highlights for current page
     });
 }
 
+// ----------------------SHORTCUT TIP----------------------
+
+// Shows the real shortcut, since people can change it in Firefox
+async function showShortcutHint(){
+
+    let shortcut = "";
+
+    try{
+        const commands = await browser.commands.getAll();
+        const command = commands.find(c => c.name === "highlight-selection");
+        shortcut = command && command.shortcut ? command.shortcut : "";
+    }catch{
+        // commands API not available
+    }
+
+    shortcutHint.textContent = shortcut
+        ? "Tip: press " + shortcut + " or right-click selected text to highlight without opening this popup."
+        : "Tip: right-click selected text to highlight without opening this popup.";
+
+    shortcutHint.hidden = false;
+}
+
+showShortcutHint();
 setUpColorChoice();
 loadHighlights(); //Load saved highlights when popup opens

@@ -13,7 +13,6 @@
 const librarySidebar = document.getElementById("librarySidebar");
 const libraryMain = document.getElementById("libraryMain");
 const librarySummary = document.getElementById("librarySummary");
-const libraryStatus = document.getElementById("libraryStatus");
 const searchInput = document.getElementById("searchInput");
 const exportBtn = document.getElementById("exportBtn");
 const exportPanel = document.getElementById("exportPanel");
@@ -683,8 +682,9 @@ function createHighlightCard(highlight, terms){
     deleteButton.textContent = "Delete";
 
     // Open tabs showing this page remove the mark themselves (content.js),
-    // and the storage listener below redraws the library
-    deleteButton.addEventListener("click", () => deleteHighlightById(highlight.id));
+    // and the storage listener below redraws the library. A message
+    // at the bottom offers Undo for a few seconds.
+    deleteButton.addEventListener("click", () => deleteWithUndo(highlight));
 
     const right = document.createElement("div");
     right.className = "card-footer-right";
@@ -892,17 +892,9 @@ importFile.addEventListener("change", async () =>{
 
 // ----------------------STATUS MESSAGE----------------------
 
-let statusTimer = null;
-
+// Uses the message at the bottom of the window (showToast in ui.js)
 function showStatus(message, isError){
-
-    clearTimeout(statusTimer);
-
-    libraryStatus.textContent = message;
-    libraryStatus.classList.toggle("is-error", Boolean(isError));
-    libraryStatus.hidden = false;
-
-    statusTimer = setTimeout(() =>{ libraryStatus.hidden = true; }, isError ? 10000 : 6000);
+    showToast(message, { isError: isError });
 }
 
 // ----------------------STAY UP TO DATE----------------------
