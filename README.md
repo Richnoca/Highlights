@@ -6,7 +6,7 @@ Highlights is a Firefox extension for highlighting text on any webpage. Highligh
 
 **On webpages**
 - Highlight selected text in yellow, green, blue or pink
-- Highlight without opening the popup: press **Alt+Shift+H**, or right-click selected text and choose a color
+- Highlight without opening the popup: press **Alt+Shift+Y**, or right-click selected text and choose a color
 - Highlights reappear automatically when you revisit the page, including on complex pages like Wikipedia
 - Selections can cross links, bold text, paragraphs and list items
 - Hover over a highlight to see its note
@@ -48,7 +48,7 @@ Firefox removes temporary add-ons when it restarts, so repeat steps 2–4 after 
 There are three ways to highlight selected text:
 
 - **Popup:** click the Highlights button in the toolbar, pick a color, and click **Highlight Selected Text**.
-- **Keyboard:** press **Alt+Shift+H**. It uses the color last picked in the popup. To change the shortcut, open `about:addons`, click the gear icon, and choose **Manage Extension Shortcuts**.
+- **Keyboard:** press **Alt+Shift+Y**. It uses the color last picked in the popup. To change the shortcut, open `about:addons`, click the gear icon, and choose **Manage Extension Shortcuts**.
 - **Right-click:** right-click the selected text, choose **Highlights**, and pick a color.
 
 If the extension was loaded after a tab was already open, reload that tab first. When that's the problem, the toolbar button shows a red **!**.
