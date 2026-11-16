@@ -167,15 +167,41 @@ function addHighlight(highlight){
     });
 }
 
+// Returns {highlight, index} for the deleted highlight (or null if it
+// was already gone), so the delete can be undone with restoreHighlight.
 function deleteHighlightById(id){
 
     return queueWrite(async () =>{
 
         const highlights = await getAllHighlights();
+        const index = highlights.findIndex(highlight => highlight.id === id);
 
-        await browser.storage.local.set({
-            [HIGHLIGHTS_KEY]: highlights.filter(highlight => highlight.id !== id)
-        });
+        if (index === -1){
+            return null;
+        }
+
+        const [deleted] = highlights.splice(index, 1);
+
+        await browser.storage.local.set({ [HIGHLIGHTS_KEY]: highlights });
+
+        return { highlight: deleted, index: index };
+    });
+}
+
+// Puts a deleted highlight back where it was (undo)
+function restoreHighlight(highlight, index){
+
+    return queueWrite(async () =>{
+
+        const highlights = await getAllHighlights();
+
+        if (highlights.some(h => h.id === highlight.id)){
+            return;
+        }
+
+        highlights.splice(Math.min(index, highlights.length), 0, highlight);
+
+        await browser.storage.local.set({ [HIGHLIGHTS_KEY]: highlights });
     });
 }
 

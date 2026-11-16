@@ -247,3 +247,85 @@ function formatDate(timestamp){
         year: "numeric"
     });
 }
+
+// ----------------------TOAST MESSAGES----------------------
+
+// A short message at the bottom of the window, optionally with a
+// button such as "Undo". Only one shows at a time.
+let toastTimer = null;
+
+function showToast(message, options){
+
+    const { actionLabel, onAction, isError, duration } = options || {};
+
+    let toast = document.getElementById("toast");
+
+    if (!toast){
+        toast = document.createElement("div");
+        toast.id = "toast";
+        toast.className = "toast";
+        toast.setAttribute("role", "status");
+        toast.setAttribute("aria-live", "polite");
+        document.body.appendChild(toast);
+    }
+
+    toast.innerHTML = "";
+    toast.classList.toggle("is-error", Boolean(isError));
+
+    const text = document.createElement("span");
+    text.className = "toast-text";
+    text.textContent = message;
+    toast.appendChild(text);
+
+    if (actionLabel){
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "toast-action";
+        button.textContent = actionLabel;
+
+        button.addEventListener("click", () =>{
+            hideToast();
+            onAction();
+        });
+
+        toast.appendChild(button);
+    }
+
+    toast.hidden = false;
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, duration || (isError ? 10000 : 6000));
+}
+
+function hideToast(){
+
+    clearTimeout(toastTimer);
+
+    const toast = document.getElementById("toast");
+
+    if (toast){
+        toast.hidden = true;
+    }
+}
+
+// Deletes a highlight and offers to undo it
+async function deleteWithUndo(highlight, afterUndo){
+
+    const deleted = await deleteHighlightById(highlight.id);
+
+    if (!deleted){
+        return;
+    }
+
+    showToast("Highlight deleted.", {
+        actionLabel: "Undo",
+        onAction: async () =>{
+            await restoreHighlight(deleted.highlight, deleted.index);
+
+            if (afterUndo){
+                afterUndo();
+            }
+        }
+    });
+}

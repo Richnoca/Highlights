@@ -6,6 +6,7 @@ Highlights is a Firefox extension for highlighting text on any webpage. Highligh
 
 **On webpages**
 - Highlight selected text in yellow, green, blue or pink
+- Highlight without opening the popup: press **Alt+Shift+W**, or right-click selected text and choose a color
 - Highlights reappear automatically when you revisit the page, including on complex pages like Wikipedia
 - Selections can cross links, bold text, paragraphs and list items
 - Hover over a highlight to see its note
@@ -24,9 +25,13 @@ Highlights is a Firefox extension for highlighting text on any webpage. Highligh
 - Export what's on screen, or everything, as Markdown, CSV or a JSON backup
 - Import a JSON backup to restore highlights
 
+**Everywhere**
+- Undo a delete from the message that appears afterwards
+- Light and dark themes that follow your Firefox or system setting
+
 ## Privacy
 
-Everything is stored locally in Firefox (`browser.storage.local`). Highlights makes no network requests and sends no data anywhere. The extension only needs two permissions: `storage` and `activeTab`.
+Everything is stored locally in Firefox (`browser.storage.local`). Highlights makes no network requests and sends no data anywhere. It uses three permissions: `storage` to save highlights, `activeTab` for the current tab, and `menus` for the right-click menu.
 
 ## Installing
 
@@ -40,11 +45,16 @@ Firefox removes temporary add-ons when it restarts, so repeat steps 2–4 after 
 ## How to use it
 
 ### Highlighting
-1. Select text on a webpage.
-2. Click the Highlights button in the toolbar.
-3. Pick a color, then click **Highlight Selected Text**.
+There are three ways to highlight selected text:
 
-If the extension was loaded after a tab was already open, reload that tab first.
+- **Popup:** click the Highlights button in the toolbar, pick a color, and click **Highlight Selected Text**.
+- **Keyboard:** press **Alt+Shift+W**. It uses the color last picked in the popup. To change the shortcut, open `about:addons`, click the gear icon, and choose **Manage Extension Shortcuts**.
+- **Right-click:** right-click the selected text, choose **Highlights**, and pick a color.
+
+If the extension was loaded after a tab was already open, reload that tab first. When that's the problem, the toolbar button shows a red **!**.
+
+### Deleting and undoing
+Click **Delete** on any highlight. A message appears at the bottom with an **Undo** button for a few seconds.
 
 ### Notes and tags
 - **Notes:** type in the **Add a note…** box under any highlight, in the popup or the library. Notes save automatically.
@@ -109,7 +119,8 @@ Highlights saved by older versions are upgraded automatically.
 
 | File | Purpose |
 | --- | --- |
-| `manifest.json` | Extension settings, permissions and add-on ID |
+| `manifest.json` | Extension settings, permissions, shortcut and add-on ID |
+| `background.js` | Keyboard shortcut and right-click menu |
 | `content.js` | Runs on webpages: creates, restores, recolors and removes highlights |
 | `highlight.css` | Colors highlights on webpages |
 | `storage.js` | Shared code for saving, updating, deleting, importing and upgrading highlights |
@@ -117,10 +128,11 @@ Highlights saved by older versions are upgraded automatically.
 | `popup.html` / `popup.js` | The toolbar popup |
 | `all-highlights.html` / `all-highlights.js` | The Highlights Library |
 | `library-tools.js` | Search, export and import |
-| `styles.css` | Styles for the popup and library |
+| `styles.css` | Styles for the popup and library, including dark mode |
+| `icons/` | Toolbar icon (adapts to light and dark toolbars), extension icons, and menu color dots |
 
 ## Ideas for the future
 
-- A keyboard shortcut for highlighting
-- A right-click menu option to highlight selected text
+- Jump straight to a highlight from the library
+- Show which highlights couldn't be found on their page
 - Publishing on addons.mozilla.org, so it stays installed after Firefox restarts

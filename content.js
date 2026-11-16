@@ -10,14 +10,88 @@ const SKIPPED_TAGS = new Set([
     "SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "SELECT", "OPTION"
 ]);
 
-// ----------------------MESSAGES FROM popup.js----------------------
+// ----------------------MESSAGES FROM popup.js AND background.js----------------------
 
 browser.runtime.onMessage.addListener((message) =>{
 
     if (message.action === "highlight"){
-        return createHighlightFromSelection(message.color); // popup receives the result
+
+        const result = createHighlightFromSelection(message.color); // sender receives the result
+
+        // The shortcut and right-click menu have no popup to explain
+        // a problem, so say it on the page instead
+        if (message.showProblems){
+            result.then((outcome) =>{
+                if (outcome && !outcome.ok){
+                    showPageMessage(outcome.reason);
+                }
+            });
+        }
+
+        return result;
     }
 });
+
+// ----------------------MESSAGE ON THE PAGE----------------------
+
+// A small note in the corner of the page. It lives in a shadow root so
+// the website's own styles can't change how it looks.
+let pageMessageTimer = null;
+
+function showPageMessage(text){
+
+    let host = document.getElementById("highlights-extension-message");
+
+    if (!host){
+
+        host = document.createElement("div");
+        host.id = "highlights-extension-message";
+
+        const shadow = host.attachShadow({ mode: "open" });
+
+        const style = document.createElement("style");
+        style.textContent = `
+            .box {
+                position: fixed;
+                right: 16px;
+                bottom: 16px;
+                z-index: 2147483647;
+                max-width: 320px;
+                padding: 10px 14px;
+                border-radius: 8px;
+                background: #1f2328;
+                color: #fbfbfe;
+                font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            }
+            .name {
+                font-weight: 600;
+                color: #ffd43b;
+            }
+        `;
+
+        const box = document.createElement("div");
+        box.className = "box";
+        box.setAttribute("role", "status");
+
+        shadow.appendChild(style);
+        shadow.appendChild(box);
+        document.documentElement.appendChild(host);
+    }
+
+    const box = host.shadowRoot.querySelector(".box");
+    box.textContent = "";
+
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = "Highlights: ";
+
+    box.appendChild(name);
+    box.appendChild(document.createTextNode(text));
+
+    clearTimeout(pageMessageTimer);
+    pageMessageTimer = setTimeout(() => host.remove(), 3500);
+}
 
 // ----------------------PAGE TEXT INDEX----------------------
 

@@ -16,6 +16,48 @@
   --accent: #0b5cad;
   --accent-soft: #e6f0fb;
   --danger: #b42318;
+
+  --hover: #f0f2f4;           /* buttons and list items on hover */
+  --hover-strong: #e6e9ec;
+  --divider: #eef0f2;         /* thin lines inside cards */
+  --input-background: #f6f7f9;
+  --swatch-border: rgba(0, 0, 0, 0.25);
+  --swatch-selected: #333333;
+  --shadow: rgba(31, 35, 40, 0.12);
+  --toast-background: #1f2328;
+  --toast-text: #fbfbfe;
+  --toast-action: #ffd43b;
+  --error-background: #fdecea;
+
+  color-scheme: light dark;   /* also styles scrollbars and form controls */
+}
+
+/* ----------Dark mode: follows Firefox's / the system's theme---------- */
+
+@media (prefers-color-scheme: dark) {
+
+  :root {
+    --text: #e6e7ea;
+    --muted: #a1a7b0;
+    --border: #3d4148;
+    --surface: #23262b;
+    --background: #17191c;
+    --accent: #79b8ff;
+    --accent-soft: #1d3349;
+    --danger: #ff8a80;
+
+    --hover: #2d3137;
+    --hover-strong: #353a41;
+    --divider: #30343a;
+    --input-background: #2b2f35;
+    --swatch-border: rgba(255, 255, 255, 0.3);
+    --swatch-selected: #e6e7ea;
+    --shadow: rgba(0, 0, 0, 0.45);
+    --toast-background: #e6e7ea;
+    --toast-text: #17191c;
+    --toast-action: #0b5cad;
+    --error-background: #3b1d1b;
+  }
 }
 
 * {
@@ -69,11 +111,17 @@ body.popup {
   padding: 9px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #f0f2f4;
+  background: var(--hover);
 }
 
 .popup .main-button:hover {
-  background: #e6e9ec;
+  background: var(--hover-strong);
+}
+
+.shortcut-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 0;
 }
 
 #viewAllBtn {
@@ -198,7 +246,7 @@ body.library-page {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
+  box-shadow: 0 8px 24px var(--shadow);
   padding: 6px;
 }
 
@@ -207,7 +255,7 @@ body.library-page {
 }
 
 .export-group + .export-group {
-  border-top: 1px solid #eef0f2;
+  border-top: 1px solid var(--divider);
 }
 
 .export-group-title {
@@ -247,19 +295,53 @@ body.library-page {
   cursor: default;
 }
 
-.library-status {
-  max-width: 1132px;
-  margin: 8px auto 0;
+/* ---------- Toast message (bottom of popup and library) ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
   padding: 10px 14px;
   border-radius: 8px;
-  background: #e8f5ec;
-  color: #1a5e33;
+  background: var(--toast-background);
+  color: var(--toast-text);
+  box-shadow: 0 8px 24px var(--shadow);
   font-size: 14px;
 }
 
-.library-status.is-error {
-  background: #fdecea;
+.toast[hidden] {
+  display: none;
+}
+
+.toast.is-error {
+  background: var(--error-background);
   color: var(--danger);
+}
+
+.toast-action {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--toast-action);
+  font-weight: 700;
+}
+
+.toast-action:hover {
+  text-decoration: underline;
+}
+
+.popup .toast {
+  bottom: 10px;
+  width: calc(100% - 28px);
+  justify-content: space-between;
+  font-size: 13px;
 }
 
 /* ---------- Sidebar ---------- */
@@ -307,7 +389,7 @@ body.library-page {
 }
 
 .sidebar-item:hover {
-  background: #f0f2f4;
+  background: var(--hover);
 }
 
 .sidebar-item[aria-current="page"] {
@@ -516,6 +598,7 @@ body.library-page {
 }
 
 .highlight-text-mark {
+  color: #111;
   background: var(--hl-yellow);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -534,7 +617,7 @@ body.library-page {
   gap: 12px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid #eef0f2;
+  border-top: 1px solid var(--divider);
 }
 
 .card-footer-right {
@@ -582,7 +665,7 @@ body.library-page {
   height: 16px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--swatch-border);
   background: var(--hl-yellow);
 }
 
@@ -596,7 +679,7 @@ body.library-page {
 .color-swatch[data-color="pink"]  { background: var(--hl-pink); }
 
 .color-swatch[aria-checked="true"] {
-  outline: 2px solid #333;
+  outline: 2px solid var(--swatch-selected);
   outline-offset: 2px;
 }
 
@@ -613,7 +696,7 @@ body.library-page {
   padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 6px;
-  background: #f6f7f9;
+  background: var(--input-background);
   resize: none;
   overflow: hidden;
   line-height: 1.4;
@@ -752,10 +835,6 @@ a:focus-visible {
 
   .view-header {
     flex-direction: column;
-  }
-
-  .library-status {
-    margin: 8px 16px 0;
   }
 
   .library-toolbar {
