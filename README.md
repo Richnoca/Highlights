@@ -14,6 +14,9 @@ Highlights is a Firefox extension that allows users to highlight important text 
 - Tag highlights (for example "exam" or "research") and view every highlight with a tag
 - Browse all highlights in the Highlights Library, with a sidebar of pages and tags
 - Jump from the popup to the current page's highlights in the library
+- Search highlights by text, page title, website, note or tag (press / to jump to the search box)
+- Export the current view or everything as Markdown, CSV or a JSON backup
+- Import a JSON backup; highlights already in the library are skipped
 - Open the original webpage from the library
 - Support more complex webpages such as Wikipedia
 
@@ -26,6 +29,7 @@ Highlights is a Firefox extension that allows users to highlight important text 
 - `content.js` - Handles highlighting and restoring webpage text
 - `highlight.css` - Colors highlights on webpages
 - `ui.js` - Shared color buttons, note box and tag editor for the popup and library
+- `library-tools.js` - Search, export and import for the library
 - `styles.css` - Controls the appearance of the extension
 - `all-highlights.html` - Displays the Highlights Library
 - `all-highlights.js` - Controls the saved highlight library
@@ -41,4 +45,4 @@ Highlights is a Firefox extension that allows users to highlight important text 
 
 ## Future Improvements
 
-Future features may include search and exporting saved highlights.
+Future ideas include a keyboard shortcut for highlighting and a right-click menu.

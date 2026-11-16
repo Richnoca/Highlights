@@ -196,6 +196,45 @@ function updateHighlight(id, changes){
     });
 }
 
+// Adds highlights from a backup file. Skips any that are already
+// saved: same id, or same page, text and surrounding text.
+// Returns {added, skipped}.
+function importHighlights(incoming){
+
+    return queueWrite(async () =>{
+
+        const highlights = await getAllHighlights();
+
+        const contentKey = h =>
+            [h.url, h.text, h.prefix, h.suffix].join("\n");
+
+        const ids = new Set(highlights.map(h => h.id));
+        const keys = new Set(highlights.map(contentKey));
+
+        let added = 0;
+        let skipped = 0;
+
+        incoming.forEach((highlight) =>{
+
+            if (ids.has(highlight.id) || keys.has(contentKey(highlight))){
+                skipped++;
+                return;
+            }
+
+            ids.add(highlight.id);
+            keys.add(contentKey(highlight));
+            highlights.push(highlight);
+            added++;
+        });
+
+        if (added > 0){
+            await browser.storage.local.set({ [HIGHLIGHTS_KEY]: highlights });
+        }
+
+        return { added: added, skipped: skipped };
+    });
+}
+
 // Highlights saved before titles existed have title "".
 // Fill them in the next time their page is opened.
 function fillMissingTitles(url, title){
