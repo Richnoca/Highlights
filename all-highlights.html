@@ -11,9 +11,34 @@
 <body class="library-page">
 
     <header class="library-header">
-        <h1>Highlights Library</h1>
-        <p id="librarySummary" class="library-summary"></p>
+
+        <div class="library-title">
+            <h1>Highlights Library</h1>
+            <p id="librarySummary" class="library-summary"></p>
+        </div>
+
+        <div class="library-toolbar">
+
+            <input id="searchInput" class="search-input" type="search"
+                placeholder="Search text, notes, tags, sites"
+                aria-label="Search highlights" autocomplete="off">
+
+            <div class="export-menu">
+                <button id="exportBtn" class="secondary-button" type="button"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="exportPanel">
+                    Export
+                </button>
+                <div id="exportPanel" class="export-panel" hidden></div>
+            </div>
+
+            <button id="importBtn" class="secondary-button" type="button">Import</button>
+            <input id="importFile" type="file" accept=".json,application/json" hidden>
+
+        </div>
+
     </header>
+
+    <div id="libraryStatus" class="library-status" role="status" hidden></div>
 
     <div class="library-layout">
 
@@ -25,6 +50,7 @@
 
     <script src="storage.js"></script>
     <script src="ui.js"></script>
+    <script src="library-tools.js"></script>
     <script src="all-highlights.js"></script>
 
 </body>

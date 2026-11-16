@@ -6,12 +6,27 @@
 //   all-highlights.html              every highlight, grouped by page
 //   all-highlights.html?url=<page>   one page's highlights
 //   all-highlights.html?tag=<tag>    highlights with one tag, from any page
+// A search can be added to any of them with &q=<words>.
+//
+// Search, export and import helpers come from library-tools.js.
 
 const librarySidebar = document.getElementById("librarySidebar");
 const libraryMain = document.getElementById("libraryMain");
 const librarySummary = document.getElementById("librarySummary");
+const libraryStatus = document.getElementById("libraryStatus");
+const searchInput = document.getElementById("searchInput");
+const exportBtn = document.getElementById("exportBtn");
+const exportPanel = document.getElementById("exportPanel");
+const importBtn = document.getElementById("importBtn");
+const importFile = document.getElementById("importFile");
 
 let view = readViewFromAddress();
+let searchQuery = readSearchFromAddress();
+
+// What the Export menu offers, updated every time the library is drawn
+let exportChoices = { view: null, all: [] };
+
+searchInput.value = searchQuery;
 
 // ----------------------VIEW STATE----------------------
 
@@ -30,9 +45,12 @@ function readViewFromAddress(){
     return { type: "all" };
 }
 
-function showView(newView){
+function readSearchFromAddress(){
+    return new URLSearchParams(window.location.search).get("q") || "";
+}
 
-    view = newView;
+// The address for the current view and search
+function addressForState(){
 
     const params = new URLSearchParams();
 
@@ -44,8 +62,21 @@ function showView(newView){
         params.set("tag", view.tag);
     }
 
+    if (searchQuery.trim()){
+        params.set("q", searchQuery.trim());
+    }
+
     const query = params.toString();
-    history.pushState(null, "", query ? "?" + query : window.location.pathname);
+
+    return query ? "?" + query : window.location.pathname;
+}
+
+// Switching view keeps the current search
+function showView(newView){
+
+    view = newView;
+
+    history.pushState(null, "", addressForState());
 
     loadLibrary();
     window.scrollTo(0, 0);
@@ -54,7 +85,55 @@ function showView(newView){
 // Back and forward buttons
 window.addEventListener("popstate", () =>{
     view = readViewFromAddress();
+    searchQuery = readSearchFromAddress();
+    searchInput.value = searchQuery;
     loadLibrary();
+});
+
+// ----------------------SEARCH BOX----------------------
+
+let searchTimer = null;
+
+searchInput.addEventListener("input", () =>{
+
+    clearTimeout(searchTimer);
+
+    searchTimer = setTimeout(() =>{
+        searchQuery = searchInput.value;
+        history.replaceState(null, "", addressForState()); // typing shouldn't fill up Back
+        loadLibrary();
+    }, 150);
+});
+
+searchInput.addEventListener("keydown", (event) =>{
+
+    if (event.key === "Escape" && searchInput.value){
+        event.preventDefault();
+        clearSearch();
+    }
+});
+
+function clearSearch(){
+
+    clearTimeout(searchTimer);
+    searchInput.value = "";
+    searchQuery = "";
+    history.replaceState(null, "", addressForState());
+    loadLibrary();
+}
+
+// Press / anywhere to jump to the search box
+document.addEventListener("keydown", (event) =>{
+
+    const target = event.target;
+    const typingSomewhere =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+    if (event.key === "/" && !typingSomewhere && !event.ctrlKey && !event.metaKey && !event.altKey){
+        event.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+    }
 });
 
 // ----------------------GROUPING----------------------
@@ -96,7 +175,16 @@ function getLatestTitle(pageHighlights){
 }
 
 function plural(count, word){
-    return count + " " + word + (count === 1 ? "" : "s");
+
+    if (count === 1){
+        return count + " " + word;
+    }
+
+    if (/[^aeiou]y$/.test(word)){
+        return count + " " + word.slice(0, -1) + "ies"; // entry -> entries
+    }
+
+    return count + " " + word + (/(ch|sh|s|x)$/.test(word) ? "es" : "s");
 }
 
 // ----------------------DRAW THE PAGE----------------------
@@ -264,6 +352,11 @@ function drawMain(highlights, pages){
 
     libraryMain.innerHTML = "";
 
+    exportChoices = {
+        view: null,
+        all: pages.flatMap(page => page.highlights)
+    };
+
     if (highlights.length === 0){
 
         const empty = document.createElement("div");
@@ -273,7 +366,7 @@ function drawMain(highlights, pages){
         heading.textContent = "No highlights yet";
 
         const hint = document.createElement("p");
-        hint.textContent = "Select text on any webpage, open the Highlights button in the toolbar, and click Highlight Selected Text.";
+        hint.textContent = "Select text on any webpage, open the Highlights button in the toolbar, and click Highlight Selected Text. Or use Import to load a backup.";
 
         empty.appendChild(heading);
         empty.appendChild(hint);
@@ -281,41 +374,130 @@ function drawMain(highlights, pages){
         return;
     }
 
+    const terms = getSearchTerms(searchQuery);
+    const searching = terms.length > 0;
+
+    // 1. The pages in this view
+    let viewPages = pages;
+    let title = "All highlights";
+
     if (view.type === "page"){
-        drawPageView(pages.find(page => page.url === view.url));
-        return;
+        viewPages = pages.filter(page => page.url === view.url);
+        title = getDisplayTitle(viewPages[0].title, view.url);
     }
 
     if (view.type === "tag"){
 
-        const tagged = pages
+        viewPages = pages
             .map(page => ({
                 ...page,
                 highlights: page.highlights.filter(h => hasTag(h, view.tag))
             }))
             .filter(page => page.highlights.length > 0);
 
-        const count = tagged.reduce((sum, page) => sum + page.highlights.length, 0);
+        title = "Tagged \u201c" + view.tag + "\u201d";
+    }
 
-        libraryMain.appendChild(
-            createViewHeader(
-                "Tagged “" + view.tag + "”",
-                count === 0
-                    ? "No highlights have this tag anymore."
-                    : plural(count, "highlight") + " from " + plural(tagged.length, "page"),
-                true
-            )
-        );
+    const viewCount = countHighlights(viewPages);
 
-        tagged.forEach(page => libraryMain.appendChild(createPageSection(page)));
+    // 2. Narrowed down by the search
+    const shownPages = !searching ? viewPages : viewPages
+        .map(page => ({
+            ...page,
+            highlights: page.highlights.filter(h => matchesSearch(h, terms))
+        }))
+        .filter(page => page.highlights.length > 0);
+
+    const shownCount = countHighlights(shownPages);
+
+    // The Export menu's "This view" choice, unless it would be everything
+    if (view.type !== "all" || searching){
+        exportChoices.view = {
+            label: searching ? title + " \u00b7 \u201c" + searchQuery.trim() + "\u201d" : title,
+            highlights: shownPages.flatMap(page => page.highlights)
+        };
+    }
+
+    // 3. Header
+    if (view.type === "page"){
+        libraryMain.appendChild(createPageHeader(viewPages[0], shownCount, searching));
+    }else{
+
+        let detail;
+
+        if (searching){
+            detail = plural(shownCount, "match") + " for \u201c" + searchQuery.trim() + "\u201d" +
+                (shownCount > 0 ? " on " + plural(shownPages.length, "page") : "");
+        }else if (view.type === "tag"){
+            detail = viewCount === 0
+                ? "No highlights have this tag anymore."
+                : plural(viewCount, "highlight") + " from " + plural(viewPages.length, "page");
+        }else{
+            detail = "Newest activity first";
+        }
+
+        libraryMain.appendChild(createViewHeader(title, detail, view.type === "tag"));
+    }
+
+    // 4. Highlights
+    if (searching && shownCount === 0){
+        libraryMain.appendChild(createNoMatches(view.type !== "all"));
         return;
     }
 
-    libraryMain.appendChild(
-        createViewHeader("All highlights", "Newest activity first", false)
-    );
+    if (view.type === "page"){
 
-    pages.forEach(page => libraryMain.appendChild(createPageSection(page)));
+        const list = document.createElement("div");
+        list.className = "card-list";
+
+        shownPages[0].highlights.forEach(h => list.appendChild(createHighlightCard(h, terms)));
+
+        libraryMain.appendChild(list);
+        return;
+    }
+
+    shownPages.forEach(page => libraryMain.appendChild(createPageSection(page, terms)));
+}
+
+function countHighlights(pages){
+    return pages.reduce((sum, page) => sum + page.highlights.length, 0);
+}
+
+function createNoMatches(canSearchEverything){
+
+    const box = document.createElement("div");
+    box.className = "empty-state";
+
+    const text = document.createElement("p");
+    text.textContent = canSearchEverything
+        ? "Nothing in this view matches your search."
+        : "No highlights match your search.";
+
+    box.appendChild(text);
+
+    const actions = document.createElement("div");
+    actions.className = "empty-state-actions";
+
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "secondary-button";
+    clear.textContent = "Clear search";
+    clear.addEventListener("click", clearSearch);
+    actions.appendChild(clear);
+
+    if (canSearchEverything){
+
+        const everywhere = document.createElement("button");
+        everywhere.type = "button";
+        everywhere.className = "secondary-button";
+        everywhere.textContent = "Search all highlights";
+        everywhere.addEventListener("click", () => showView({ type: "all" }));
+        actions.appendChild(everywhere);
+    }
+
+    box.appendChild(actions);
+
+    return box;
 }
 
 function createViewHeader(titleText, detailText, showClear){
@@ -350,8 +532,8 @@ function createViewHeader(titleText, detailText, showClear){
     return header;
 }
 
-// One page's highlights on its own
-function drawPageView(page){
+// Header for one page's view: title, address and an Open page button
+function createPageHeader(page, shownCount, searching){
 
     const header = document.createElement("div");
     header.className = "view-header";
@@ -370,7 +552,11 @@ function drawPageView(page){
     link.rel = "noopener";
     link.textContent = page.url;
 
-    detail.appendChild(document.createTextNode(plural(page.highlights.length, "highlight") + " · "));
+    const count = searching
+        ? shownCount + " of " + plural(page.highlights.length, "highlight") + " match"
+        : plural(page.highlights.length, "highlight");
+
+    detail.appendChild(document.createTextNode(count + " \u00b7 "));
     detail.appendChild(link);
 
     text.appendChild(title);
@@ -386,18 +572,11 @@ function drawPageView(page){
     header.appendChild(text);
     header.appendChild(open);
 
-    libraryMain.appendChild(header);
-
-    const list = document.createElement("div");
-    list.className = "card-list";
-
-    page.highlights.forEach(highlight => list.appendChild(createHighlightCard(highlight)));
-
-    libraryMain.appendChild(list);
+    return header;
 }
 
 // A page heading plus its highlights (used by the "all" and "tag" views)
-function createPageSection(page){
+function createPageSection(page, terms){
 
     const section = document.createElement("section");
     section.className = "page-section";
@@ -427,7 +606,7 @@ function createPageSection(page){
     const list = document.createElement("div");
     list.className = "card-list";
 
-    page.highlights.forEach(highlight => list.appendChild(createHighlightCard(highlight)));
+    page.highlights.forEach(highlight => list.appendChild(createHighlightCard(highlight, terms)));
 
     section.appendChild(list);
 
@@ -436,7 +615,7 @@ function createPageSection(page){
 
 // ----------------------ONE HIGHLIGHT----------------------
 
-function createHighlightCard(highlight){
+function createHighlightCard(highlight, terms){
 
     const card = document.createElement("article");
     card.className = "highlight-card";
@@ -448,16 +627,42 @@ function createHighlightCard(highlight){
 
     const marked = document.createElement("span");
     marked.className = "highlight-text-mark";
-    marked.textContent = highlight.text;
+    // Show search matches inside the highlighted text
+    splitBySearchTerms(highlight.text, terms).forEach((piece) =>{
+
+        if (piece.hit){
+            const hit = document.createElement("mark");
+            hit.className = "search-hit";
+            hit.textContent = piece.text;
+            marked.appendChild(hit);
+        }else{
+            marked.appendChild(document.createTextNode(piece.text));
+        }
+    });
 
     quote.appendChild(marked);
     card.appendChild(quote);
 
-    card.appendChild(createNoteEditor(highlight));
+    const noteEditor = createNoteEditor(highlight);
 
-    card.appendChild(
-        createTagEditor(highlight, tag => showView({ type: "tag", tag: tag }))
-    );
+    // A textarea can't highlight words, so outline a matching note instead
+    if (terms.length > 0 && textMatches(highlight.note, terms)){
+        noteEditor.classList.add("search-match");
+    }
+
+    card.appendChild(noteEditor);
+
+    const tagEditor = createTagEditor(highlight, tag => showView({ type: "tag", tag: tag }));
+
+    if (terms.length > 0){
+        tagEditor.querySelectorAll(".tag-chip").forEach((chip) =>{
+            if (textMatches(chip.querySelector(".tag-label").textContent, terms)){
+                chip.classList.add("search-match");
+            }
+        });
+    }
+
+    card.appendChild(tagEditor);
 
     const footer = document.createElement("div");
     footer.className = "card-footer";
@@ -490,6 +695,214 @@ function createHighlightCard(highlight){
     card.appendChild(footer);
 
     return card;
+}
+
+// ----------------------EXPORT MENU----------------------
+
+const EXPORT_FORMATS = [
+    { label: "Markdown", extension: "md", mimeType: "text/markdown",
+      build: (highlights, heading) => exportAsMarkdown(highlights, heading) },
+    { label: "CSV", extension: "csv", mimeType: "text/csv",
+      build: highlights => exportAsCsv(highlights) },
+    { label: "JSON backup", extension: "json", mimeType: "application/json",
+      build: highlights => exportAsJson(highlights) }
+];
+
+function openExportMenu(){
+
+    exportPanel.innerHTML = "";
+
+    if (exportChoices.all.length === 0){
+
+        const empty = document.createElement("p");
+        empty.className = "export-empty";
+        empty.textContent = "There's nothing to export yet.";
+        exportPanel.appendChild(empty);
+
+    }else{
+
+        if (exportChoices.view){
+
+            exportPanel.appendChild(
+                createExportGroup(
+                    "This view",
+                    exportChoices.view.label,
+                    exportChoices.view.highlights,
+                    exportChoices.view.label
+                )
+            );
+        }
+
+        exportPanel.appendChild(
+            createExportGroup(
+                exportChoices.view ? "Export all" : "All highlights",
+                "Everything in your library",
+                exportChoices.all,
+                null
+            )
+        );
+    }
+
+    exportPanel.hidden = false;
+    exportBtn.setAttribute("aria-expanded", "true");
+
+    const first = exportPanel.querySelector("button");
+
+    if (first){
+        first.focus();
+    }
+}
+
+function closeExportMenu(returnFocus){
+
+    if (exportPanel.hidden){
+        return;
+    }
+
+    exportPanel.hidden = true;
+    exportBtn.setAttribute("aria-expanded", "false");
+
+    if (returnFocus){
+        exportBtn.focus();
+    }
+}
+
+// A heading ("This view · 3 highlights") and one button per format.
+// viewLabel names the file and Markdown title; null means everything.
+function createExportGroup(heading, scope, highlights, viewLabel){
+
+    const group = document.createElement("div");
+    group.className = "export-group";
+
+    const title = document.createElement("p");
+    title.className = "export-group-title";
+    title.textContent = heading + " \u00b7 " + plural(highlights.length, "highlight");
+
+    const detail = document.createElement("p");
+    detail.className = "export-group-detail";
+    detail.textContent = scope;
+
+    const buttons = document.createElement("div");
+    buttons.className = "export-buttons";
+
+    EXPORT_FORMATS.forEach((format) =>{
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "secondary-button";
+        button.textContent = format.label;
+        button.disabled = highlights.length === 0;
+
+        button.addEventListener("click", () =>{
+
+            const heading = viewLabel ? "Highlights: " + viewLabel : "Highlights";
+
+            downloadText(
+                format.build(highlights, heading),
+                exportFilename(viewLabel || "all", format.extension),
+                format.mimeType
+            );
+
+            closeExportMenu(true);
+            showStatus("Exported " + plural(highlights.length, "highlight") + " as " + format.label + ".");
+        });
+
+        buttons.appendChild(button);
+    });
+
+    group.appendChild(title);
+    group.appendChild(detail);
+    group.appendChild(buttons);
+
+    return group;
+}
+
+exportBtn.addEventListener("click", () =>{
+
+    if (exportPanel.hidden){
+        openExportMenu();
+    }else{
+        closeExportMenu(false);
+    }
+});
+
+// Close the menu when clicking elsewhere or pressing Escape
+document.addEventListener("click", (event) =>{
+
+    if (!exportPanel.hidden && !event.target.closest(".export-menu")){
+        closeExportMenu(false);
+    }
+});
+
+document.addEventListener("keydown", (event) =>{
+
+    if (event.key === "Escape" && !exportPanel.hidden){
+        closeExportMenu(true);
+    }
+});
+
+// ----------------------IMPORT----------------------
+
+importBtn.addEventListener("click", () => importFile.click());
+
+importFile.addEventListener("change", async () =>{
+
+    const file = importFile.files[0];
+    importFile.value = ""; // so choosing the same file again still works
+
+    if (!file){
+        return;
+    }
+
+    try{
+
+        const { highlights, rejected } = parseBackup(await file.text());
+
+        if (highlights.length === 0){
+            showStatus("That backup doesn't contain any highlights.", true);
+            return;
+        }
+
+        const { added, skipped } = await importHighlights(highlights);
+
+        const parts = [
+            added === 0
+                ? "No new highlights to import."
+                : "Imported " + plural(added, "highlight") + "."
+        ];
+
+        if (skipped > 0){
+            parts.push(
+                skipped === 1
+                    ? "1 was already in your library."
+                    : skipped + " were already in your library."
+            );
+        }
+
+        if (rejected > 0){
+            parts.push(plural(rejected, "entry") + " couldn't be read and " + (rejected === 1 ? "was" : "were") + " skipped.");
+        }
+
+        showStatus(parts.join(" "));
+
+    }catch (error){
+        showStatus(error.message, true);
+    }
+});
+
+// ----------------------STATUS MESSAGE----------------------
+
+let statusTimer = null;
+
+function showStatus(message, isError){
+
+    clearTimeout(statusTimer);
+
+    libraryStatus.textContent = message;
+    libraryStatus.classList.toggle("is-error", Boolean(isError));
+    libraryStatus.hidden = false;
+
+    statusTimer = setTimeout(() =>{ libraryStatus.hidden = true; }, isError ? 10000 : 6000);
 }
 
 // ----------------------STAY UP TO DATE----------------------
