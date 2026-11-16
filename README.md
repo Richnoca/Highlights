@@ -33,7 +33,13 @@ Highlights is a Firefox extension for highlighting text on any webpage. Highligh
 
 Everything is stored locally in Firefox (`browser.storage.local`). Highlights makes no network requests and sends no data anywhere. It uses three permissions: `storage` to save highlights, `activeTab` for the current tab, and `menus` for the right-click menu.
 
+Highlights doesn't run in private windows, so nothing you read while browsing privately is saved.
+
 ## Installing
+
+Highlights needs Firefox 128 or newer.
+
+### For development
 
 1. Download the code: either `git clone https://github.com/Richnoca/Highlights.git`, or download the ZIP from GitHub and unzip it.
 2. In Firefox, go to `about:debugging`.
@@ -86,6 +92,7 @@ Click **Import** and choose a JSON backup to restore it. Highlights you already 
 ## Limitations
 
 - Firefox doesn't allow extensions on its own pages (`about:` pages, addons.mozilla.org).
+- Highlights is turned off in private windows.
 - A highlight can't be restored if the page's text changes, for example when an article is edited. It stays in the library and can be deleted there.
 - Highlights are matched to the page address without the `#section` part, so `page#History` and `page` share highlights.
 
