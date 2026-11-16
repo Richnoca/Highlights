@@ -60,7 +60,7 @@ browser.menus.onClicked.addListener((info, tab) =>{
 
 // ----------------------KEYBOARD SHORTCUT----------------------
 
-// Alt+Shift+Y by default. People can change it in about:addons →
+// Alt+Shift+W by default. People can change it in about:addons →
 // gear menu → Manage Extension Shortcuts.
 browser.commands.onCommand.addListener(async (command, tab) =>{
 

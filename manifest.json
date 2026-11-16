@@ -39,7 +39,7 @@
   "commands": {
     "highlight-selection": {
       "suggested_key": {
-        "default": "Alt+Shift+Y"
+        "default": "Alt+Shift+W"
       },
       "description": "Highlight the selected text"
     }
